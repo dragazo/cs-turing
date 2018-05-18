@@ -158,6 +158,22 @@ namespace turing
         /// <summary>
         /// Adds a new rule to the machine. Returns true on success (fails if there's a conflicting rule).
         /// </summary>
+        /// <param name="rule">the rule to add</param>
+        public bool AddRule(Rule rule)
+        {
+            // create the key
+            var key = new Tuple<int, int>(rule.CurrentState, rule.Input);
+
+            // make sure we don't redefine a rule
+            if (Rules.ContainsKey(key)) return false;
+
+            // add the rule
+            Rules.Add(key, new Tuple<int, int, int>(rule.Output, rule.NextState, rule.Offset));
+            return true;
+        }
+        /// <summary>
+        /// Adds a new rule to the machine. Returns true on success (fails if there's a conflicting rule).
+        /// </summary>
         /// <param name="currentState">the current state that is required to exeute the rule</param>
         /// <param name="input">the current input that is required to execute the rule</param>
         /// <param name="output">the value to write when executing the rule</param>
@@ -175,6 +191,7 @@ namespace turing
             Rules.Add(key, new Tuple<int, int, int>(output, nextState, offset));
             return true;
         }
+        
         /// <summary>
         /// Removes the rule with the specified signature. Returns true if a rule matching the signature was removed.
         /// </summary>
