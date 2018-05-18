@@ -46,10 +46,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\Turing.cs" />
-    <Compile Include="src\TuringPlayer.cs">
+    <Compile Include="src\gui\TuringPlayer.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="src\TuringPlayer.Designer.cs">
+    <Compile Include="src\gui\TuringPlayer.Designer.cs">
       <DependentUpon>TuringPlayer.cs</DependentUpon>
     </Compile>
     <Compile Include="src\Program.cs" />
@@ -63,6 +63,9 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="src\gui\TuringPlayer.resx">
+      <DependentUpon>TuringPlayer.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

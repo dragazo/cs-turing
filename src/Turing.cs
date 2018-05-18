@@ -16,7 +16,7 @@ namespace turing
         internal class Track
         {
             public Track Prev = null, Next = null;
-            public int[] Data = new int[64];
+            public int[] Data = new int[1024];
 
             /// <summary>
             /// Zeroes out the data
@@ -49,6 +49,11 @@ namespace turing
                 }
                 set
                 {
+                    // if it's in range, assign it
+                    if (Pos >= 0 && Pos < Track.Data.Length) { Track.Data[Pos] = value; return; }
+                    // if it's a zero, no-op (no need to allocate memory for an imaginary value)
+                    if (value == ZeroValue) return;
+
                     // while we're out of bounds to the left
                     while (Pos < 0)
                     {
@@ -98,7 +103,19 @@ namespace turing
                 return res;
             }
             public static DataIterator operator +(int offset, DataIterator iter) => iter + offset;
-            public static DataIterator operator -(DataIterator iter, int offset) => iter - (-offset);
+            public static DataIterator operator -(DataIterator iter, int offset) => iter + (-offset);
+        }
+
+        /// <summary>
+        /// Represents a rule that governs how the turing machine executes
+        /// </summary>
+        public class Rule
+        {
+            public int CurrentState;
+            public int Input;
+            public int Output;
+            public int NextState;
+            public int Offset;
         }
 
         // -----------------------------------
@@ -114,7 +131,7 @@ namespace turing
         public int State { get; set; } = 0;
 
         /// <summary>
-        /// Holds the rules used by this turing machine. (state, in) -> (state, out, off)
+        /// Holds the rules used by this turing machine. (state, in) -> (out, state, off)
         /// </summary>
         private Dictionary<Tuple<int, int>, Tuple<int, int, int>> Rules = new Dictionary<Tuple<int, int>, Tuple<int, int, int>>();
 
@@ -130,7 +147,7 @@ namespace turing
         /// </summary>
         public void ClearData()
         {
-            // get a new track root
+            // get a new track root (not just unlinking a previous track because we might have used move/join semantics on it)
             Pos.Track = new Track();
             Pos.Pos = 0;
 
@@ -143,10 +160,10 @@ namespace turing
         /// </summary>
         /// <param name="currentState">the current state that is required to exeute the rule</param>
         /// <param name="input">the current input that is required to execute the rule</param>
-        /// <param name="nextState">the state to go to after executing the rule</param>
         /// <param name="output">the value to write when executing the rule</param>
+        /// <param name="nextState">the state to go to after executing the rule</param>
         /// <param name="offset">the amount to offset the read cursor by after executing the rule</param>
-        public bool AddRule(int currentState, int input, int nextState, int output, int offset)
+        public bool AddRule(int currentState, int input, int output, int nextState, int offset)
         {
             // create the key
             var key = new Tuple<int, int>(currentState, input);
@@ -155,13 +172,31 @@ namespace turing
             if (Rules.ContainsKey(key)) return false;
 
             // add the rule
-            Rules.Add(key, new Tuple<int, int, int>(nextState, output, offset));
+            Rules.Add(key, new Tuple<int, int, int>(output, nextState, offset));
             return true;
         }
+        /// <summary>
+        /// Removes the rule with the specified signature. Returns true if a rule matching the signature was removed.
+        /// </summary>
+        /// <param name="currentState">the current state for the rule to remove</param>
+        /// <param name="input">the input for the rule</param>
+        public bool RemoveRule(int currentState, int input) => Rules.Remove(new Tuple<int, int>(currentState, input));
         /// <summary>
         /// Removes all the rules from the machine
         /// </summary>
         public void ClearRules() => Rules.Clear();
+
+        /// <summary>
+        /// Gets the next rule to be executed. Returns null if there is no rule meeting the current state and input.
+        /// Returning null implies <see cref="Tick"/> would return false.
+        /// </summary>
+        public Rule GetExecutingRule()
+        {
+            // get the rule to execute
+            if (!Rules.TryGetValue(new Tuple<int, int>(State, Pos.Value), out var rule)) return null;
+
+            return new Rule() { CurrentState = State, Input = Pos.Value, Output = rule.Item1, NextState = rule.Item2, Offset = rule.Item3 };
+        }
 
         /// <summary>
         /// Applies a single rule to the machine. Returns true if a rule was successfully executed (failure implies end of execution)
@@ -172,8 +207,8 @@ namespace turing
             if (!Rules.TryGetValue(new Tuple<int, int>(State, Pos.Value), out var rule)) return false;
 
             // apply the rule
-            State = rule.Item1;
-            Pos.Value = rule.Item2;
+            Pos.Value = rule.Item1;
+            State = rule.Item2;
             Pos += rule.Item3;
 
             return true;
