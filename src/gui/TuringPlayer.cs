@@ -33,6 +33,19 @@ namespace turing
         /// </summary>
         private int CursorPagePos => CursorPos < 0 ? (CursorPos - (PageLen - 1)) / PageLen : CursorPos / PageLen;
 
+        /// <summary>
+        /// Gets if the simulation is running. set to false to stop simulation. setting to true should only be done by <see cref="Run"/>
+        /// </summary>
+        private bool Running
+        {
+            get => StopButton.Enabled;
+            set
+            {
+                TickButton.Enabled = RunButton.Enabled = !value;
+                StopButton.Enabled = value;
+            }
+        }
+
         // -- rendering settings -- //
 
         private const float yOffset = 70;
@@ -51,7 +64,12 @@ namespace turing
         private Pen BorderPen = new Pen(Color.Green);
         private Font TextFont = new Font(FontFamily.GenericMonospace, 16);
 
-        // ------------------------ //
+        // -- simulation settings -- //
+
+        private const int FrameSleepTime = 10;
+        private const int StepsPerFrame = 10000;
+
+        // ------------------------- //
 
         public TuringPlayer()
         {
@@ -59,16 +77,19 @@ namespace turing
 
             // allocate the turing machine
             Turing = new Turing();
+
+            //DEBUG
+            //if (!Turing.LoadRules("2expab.txt")) MessageBox.Show("error loading rules");
+            //if (!Turing.LoadData("data.txt")) MessageBox.Show("error loading data");
+
             // initialize for execution
             Init();
 
             // -------------
 
-            Resize += (o, e) => Invalidate();
+            Running = false; // flag not running for button states
 
-            //DEBUG
-            //if (!Turing.LoadRules("2expab.txt")) MessageBox.Show("error loading rules");
-            //if (!Turing.LoadData("data.txt")) MessageBox.Show("error loading data");
+            Resize += (o, e) => Invalidate();
         }
 
         private bool __Disposed = false;
@@ -98,7 +119,10 @@ namespace turing
         {
             base.OnPaint(e);         // ensure we call base for event pumping
             Graphics g = e.Graphics; // get shorthand graphics handle
-            
+
+            // if we're following the cursor make sure it's in focus
+            if (Follow) FocusCursor();
+
             // get render cursor
             float x = xPadding;
             float y = yOffset;
@@ -204,9 +228,6 @@ namespace turing
                 // account for page offset
                 RenderPoint += count * PageLen;
                 CursorPos -= count * PageLen;
-
-                // redraw display
-                Invalidate();
             }
         }
         private void FocusCursor()
@@ -215,12 +236,12 @@ namespace turing
             Advance(CursorPagePos);
         }
 
-        private void Tick()
+        private bool Tick()
         {
             // get the rule that's about to be executed
             Turing.Rule rule = Turing.GetExecutingRule();
             // if there is none, no-op
-            if (rule == null) return;
+            if (rule == null) return false;
 
             // apply the rule
             Turing.Tick();
@@ -229,35 +250,90 @@ namespace turing
             // account for the offset in the renderer
             CursorPos += rule.Offset;
 
-            // if we're following the cursor make sure it's in focus
-            if (Follow) FocusCursor();
+            return true;
+        }
+        private async void Run()
+        {
+            // don't do this if we're already running a simulation
+            if (Running) return;
+            // set running state
+            Running = true;
 
-            // redraw display
-            Invalidate();
+            // while in running state
+            while (Running)
+            {
+                // tick the machine
+                for (int i = 0; i < StepsPerFrame; ++i)
+                {
+                    // if any tick fails
+                    if (!Tick())
+                    {
+                        // stop simulation and redraw display
+                        Running = false;
+                        Invalidate();
+
+                        // immediate return (ensures calling Run() again within interval of redrawing/waiting doesn't cause multiple runners)
+                        return;
+                    }
+                }
+
+                // redraw display
+                Invalidate();
+
+                // sleep
+                await Task.Delay(FrameSleepTime);
+            }
         }
 
         private void TickButton_Click(object sender, EventArgs e)
         {
-            Tick();
+            // if we're in simulation mode do nothing (shouldn't ever happen since tick button is disabled during simulation)
+            if (Running) return;
+
+            // if we apply a tick, redraw display
+            if (Tick()) Invalidate();
+        }
+        private void RunButton_Click(object sender, EventArgs e)
+        {
+            // start simulation
+            Run();
+        }
+        private void StopButton_Click(object sender, EventArgs e)
+        {
+            // request sim stop
+            Running = false;
         }
 
-        private void DataCurrentButton_Click(object sender, EventArgs e)
-        {
-            FocusCursor();
-        }
         private void PrevDataButton_Click(object sender, EventArgs e)
         {
             Advance(-1);
+            Invalidate();
+        }
+        private void DataCurrentButton_Click(object sender, EventArgs e)
+        {
+            FocusCursor();
+            Invalidate();
         }
         private void NextDataButton_Click(object sender, EventArgs e)
         {
             Advance(1);
+            Invalidate();
         }
 
         private void FollowCheck_CheckedChanged(object sender, EventArgs e)
         {
             // if we set it to true, focus on the cursor
-            if (FollowCheck.Checked) FocusCursor();
+            if (FollowCheck.Checked)
+            {
+                FocusCursor();
+                Invalidate();
+            }
+        }
+
+        private void menuStrip1_MenuActivate(object sender, EventArgs e)
+        {
+            // when opening the menu we should stop simulating
+            Running = false;
         }
 
         private void rulesToolStripMenuItem_Click(object sender, EventArgs e)

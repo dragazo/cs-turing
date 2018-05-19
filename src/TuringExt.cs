@@ -69,12 +69,11 @@ namespace turing
             StreamReader f = null;
             string line;
 
-            // get a clean iterator
-            DataIterator root = new DataIterator() { Track = new Track(), Pos = 0 };
-            root.Track.Clear();
+            // get a new track
+            Track root = new Track();
 
-            // create working iterator
-            DataIterator iter = root;
+            Track current = root; // working track
+            int pos = 0;          // position in working track
 
             try
             {
@@ -90,14 +89,25 @@ namespace turing
                     if (line == null) break;
                     // empty lines are ok
                     if (string.IsNullOrWhiteSpace(line)) continue;
-                    
-                    // add as a data item
-                    iter.Value = int.Parse(line);
-                    ++iter;
+
+                    // if we're out of track range
+                    if (pos == current.Data.Length)
+                    {
+                        // link in a new track
+                        Track t = new Track() { Prev = current };
+                        current = current.Next = t;
+                        pos = 0;
+                    }
+
+                    // place the value
+                    current.Data[pos++] = int.Parse(line);
                 }
 
+                // zero the rest of the current track
+                for (; pos < current.Data.Length; ++pos) current.Data[pos] = ZeroValue;
+
                 // replace old data
-                Pos = root;
+                Pos = new DataIterator() { Track = root, Pos = 0 };
                 // set initial state
                 State = 0;
 
