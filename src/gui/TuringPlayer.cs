@@ -25,13 +25,7 @@ namespace turing
         private bool Follow
         {
             get => FollowCheck.Checked;
-            set
-            {
-                FollowCheck.Checked = value;
-
-                // if setting this to true, focus on cursor
-                if (value) FocusCursor();
-            }
+            set => FollowCheck.Checked = value;
         }
 
         /// <summary>
@@ -65,17 +59,16 @@ namespace turing
 
             // allocate the turing machine
             Turing = new Turing();
-
-            // set up rendering data
-            RenderPoint = Turing.Pos;
-            CursorPos = 0;
-
-            // zero tick count
-            Ticks = 0;
+            // initialize for execution
+            Init();
 
             // -------------
 
             Resize += (o, e) => Invalidate();
+
+            //DEBUG
+            //if (!Turing.LoadRules("2expab.txt")) MessageBox.Show("error loading rules");
+            //if (!Turing.LoadData("data.txt")) MessageBox.Show("error loading data");
         }
 
         private bool __Disposed = false;
@@ -123,7 +116,7 @@ namespace turing
 
             // tick line
             g.DrawString("Tick", TextFont, TextBrush, x, y);
-            g.DrawString(Turing.State.ToString(), TextFont, TextBrush, x + ww, y);
+            g.DrawString(Ticks.ToString(), TextFont, TextBrush, x + ww, y);
             y += h;
 
             // new line
@@ -140,7 +133,7 @@ namespace turing
             for (int col = 0; col < dispCols; ++col)
             {
                 g.DrawString(iter.Value.ToString(), TextFont, GhostBrush, x + col * w, y);
-                iter += 1;
+                ++iter;
             }
             y += h;
 
@@ -150,7 +143,7 @@ namespace turing
                 for (int col = 0; col < dispCols; ++col)
                 {
                     g.DrawString(iter.Value.ToString(), TextFont, TextBrush, x + col * w, y);
-                    iter += 1;
+                    ++iter;
                 }
                 y += h;
             }
@@ -159,7 +152,7 @@ namespace turing
             for (int col = 0; col < dispCols; ++col)
             {
                 g.DrawString(iter.Value.ToString(), TextFont, GhostBrush, x + col * w, y);
-                iter += 1;
+                ++iter;
             }
             y += h;
 
@@ -181,6 +174,22 @@ namespace turing
             g.DrawString(rule != null ? rule.NextState.ToString() : "N/A", TextFont, TextBrush, x + 3 * ww, y);
             g.DrawString(rule != null ? rule.Offset.ToString() : "N/A", TextFont, TextBrush, x + 4 * ww, y);
             y += h;
+        }
+
+        /// <summary>
+        /// Initialzes the display for execution
+        /// </summary>
+        public void Init()
+        {
+            // set up rendering data
+            RenderPoint = Turing.Pos;
+            CursorPos = 0;
+
+            // zero tick count
+            Ticks = 0;
+
+            // redraw display
+            Invalidate();
         }
 
         /// <summary>
@@ -243,6 +252,43 @@ namespace turing
         private void NextDataButton_Click(object sender, EventArgs e)
         {
             Advance(1);
+        }
+
+        private void FollowCheck_CheckedChanged(object sender, EventArgs e)
+        {
+            // if we set it to true, focus on the cursor
+            if (FollowCheck.Checked) FocusCursor();
+        }
+
+        private void rulesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog d = new OpenFileDialog())
+            {
+                if (d.ShowDialog() == DialogResult.OK)
+                {
+                    if (Turing.LoadRules(d.FileName))
+                    {
+                        // redraw display
+                        Invalidate();
+                    }
+                    else MessageBox.Show("Failed to load the rules file");
+                }
+            }
+        }
+        private void dataToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog d = new OpenFileDialog())
+            {
+                if (d.ShowDialog() == DialogResult.OK)
+                {
+                    if (Turing.LoadData(d.FileName))
+                    {
+                        // initialize for execution
+                        Init();
+                    }
+                    else MessageBox.Show("Failed to load the data file");
+                }
+            }
         }
     }
 }

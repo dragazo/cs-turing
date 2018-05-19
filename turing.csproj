@@ -45,6 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\TuringExt.cs" />
     <Compile Include="src\Turing.cs" />
     <Compile Include="src\gui\TuringPlayer.cs">
       <SubType>Form</SubType>

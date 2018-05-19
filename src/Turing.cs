@@ -30,12 +30,10 @@ namespace turing
         /// <summary>
         /// An iterator to a value in a turing machine's memory
         /// </summary>
-        public class DataIterator
+        public struct DataIterator
         {
-            internal Track Track = null;
-            internal int Pos = 0;
-
-            internal DataIterator() { }
+            internal Track Track;
+            internal int Pos;
 
             /// <summary>
             /// Gets/sets the value pointed to by this iterator
@@ -104,6 +102,9 @@ namespace turing
             }
             public static DataIterator operator +(int offset, DataIterator iter) => iter + offset;
             public static DataIterator operator -(DataIterator iter, int offset) => iter + (-offset);
+
+            public static DataIterator operator ++(DataIterator iter) => iter + 1;
+            public static DataIterator operator --(DataIterator iter) => iter + (-1);
         }
 
         /// <summary>
@@ -121,14 +122,14 @@ namespace turing
         // -----------------------------------
 
         /// <summary>
-        /// Gets/sets the iterator to the execution position
+        /// The iterator to the execution position
         /// </summary>
-        public DataIterator Pos { get; set; } = new DataIterator();
+        public DataIterator Pos;
 
         /// <summary>
         /// Gets the current state of the 
         /// </summary>
-        public int State { get; set; } = 0;
+        public int State = 0;
 
         /// <summary>
         /// Holds the rules used by this turing machine. (state, in) -> (out, state, off)
@@ -148,10 +149,7 @@ namespace turing
         public void ClearData()
         {
             // get a new track root (not just unlinking a previous track because we might have used move/join semantics on it)
-            Pos.Track = new Track();
-            Pos.Pos = 0;
-
-            // zero it
+            Pos = new DataIterator() { Track = new Track(), Pos = 0 };
             Pos.Track.Clear();
         }
 
